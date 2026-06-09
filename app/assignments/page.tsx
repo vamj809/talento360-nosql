@@ -1,35 +1,72 @@
-import { getDb } from "@/lib/mongodb";
+import Link from "next/link";
+import { DataTable } from "@/components/DataTable";
+import { EmptyState } from "@/components/EmptyState";
+import { assignmentStatusLabel, getAssignmentsSummary } from "@/lib/queries";
+import { formatPercent } from "@/lib/formatters";
+
+export const dynamic = "force-dynamic";
 
 export default async function AssignmentsPage() {
-  const db = await getDb();
-
-  const rows = await db.collection("evaluation_assignments").aggregate([
-    { $group: { _id: "$evaluatedId", total: { $sum: 1 }, completed: { $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] } } } },
-    { $limit: 20 }
-  ]).toArray();
+  const rows = await getAssignmentsSummary();
 
   return (
-    <main style={{ padding: 32, fontFamily: "Arial" }}>
-      <h1>Asignaciones de evaluación</h1>
-      <table border={1} cellPadding={8}>
-        <thead>
-          <tr>
-            <th>Empleado evaluado</th>
-            <th>Total asignadas</th>
-            <th>Completadas</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map(row => (
-            <tr key={String(row._id)}>
-              <td>{String(row._id)}</td>
+    <main className="page">
+      <section className="page-header">
+        <h1>Asignaciones de evaluación</h1>
+        <p>
+          Resumen por empleado evaluado. Para fines de demostración académica se
+          muestran tokens que permiten entrar al formulario anónimo.
+        </p>
+      </section>
+
+      {rows.length === 0 ? (
+        <EmptyState
+          message="Ejecute npm run seed para generar asignaciones."
+          title="Sin asignaciones"
+        />
+      ) : (
+        <DataTable
+          headers={[
+            "Empleado evaluado",
+            "Departamento",
+            "Total",
+            "Completadas",
+            "Pendientes",
+            "Avance",
+            "Token demo",
+          ]}
+        >
+          {rows.map((row) => (
+            <tr key={row.evaluatedId}>
+              <td>
+                <strong>{row.employeeName}</strong>
+                <br />
+                <span className="muted">{row.employeeCode}</span>
+              </td>
+              <td>{row.department}</td>
               <td>{row.total}</td>
               <td>{row.completed}</td>
+              <td>{row.pending}</td>
+              <td>{formatPercent(row.completionRate)}</td>
+              <td>
+                <Link href={`/evaluate/${row.sampleToken}`}>
+                  <span className="mono">{row.sampleToken}</span>
+                </Link>
+                <br />
+                <span
+                  className={`badge ${
+                    row.sampleStatus === "completed"
+                      ? "badge-success"
+                      : "badge-warning"
+                  }`}
+                >
+                  {assignmentStatusLabel(row.sampleStatus)}
+                </span>
+              </td>
             </tr>
           ))}
-        </tbody>
-      </table>
-      <p><a href="/">Volver</a></p>
+        </DataTable>
+      )}
     </main>
   );
 }
