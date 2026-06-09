@@ -1,12 +1,23 @@
 services:
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "3000:3000"
     environment:
       MONGODB_URI: mongodb://mongo:27017/talento360
+      REDIS_URL: redis://redis:6379
+      APP_LOCALE: es-DO
+      APP_TIME_ZONE: America/La_Paz
+      NODE_ENV: production
+      TZ: America/La_Paz
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: sh -c "npm run seed && npm run start"
 
   mongo:
     image: mongo:7
@@ -14,6 +25,24 @@ services:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
 
 volumes:
   mongo_data:
+  redis_data:

@@ -1,0 +1,10 @@
+.git
+.next
+coverage
+docs/screenshots/*.png
+node_modules
+npm-debug.log*
+README.old.md
+.env
+.env.local
+.env.*.local
