@@ -2,20 +2,26 @@ import { MongoClient } from "mongodb";
 
 const uri = process.env.MONGODB_URI || "mongodb://localhost:27017/talento360";
 
-let clientPromise: Promise<MongoClient>;
-
 declare global {
-  var mongoClientPromise: Promise<MongoClient> | undefined;
+  var talento360MongoClientPromise: Promise<MongoClient> | undefined;
 }
 
-if (!global.mongoClientPromise) {
-  const client = new MongoClient(uri);
-  global.mongoClientPromise = client.connect();
+if (!global.talento360MongoClientPromise) {
+  const client = new MongoClient(uri, {
+    serverSelectionTimeoutMS: 5000,
+  });
+  global.talento360MongoClientPromise = client.connect();
 }
 
-clientPromise = global.mongoClientPromise;
+const clientPromise = global.talento360MongoClientPromise;
 
 export async function getDb() {
   const client = await clientPromise;
   return client.db();
+}
+
+export async function pingMongo() {
+  const db = await getDb();
+  await db.command({ ping: 1 });
+  return true;
 }
